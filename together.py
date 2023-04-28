@@ -2,15 +2,17 @@ import telebot
 from telebot import types
 from PIL import Image, ImageDraw
 
-bot = telebot.TeleBot('5610082254:AAF0SoX8VoY7aCYGMT3jPD8bktFTJpoeifg')
-board = [' ' for x in range(10)]
-gameon = False
-games = 0
-s = '3'
+bot = telebot.TeleBot('5610082254:AAF0SoX8VoY7aCYGMT3jPD8bktFTJpoeifg')#токен
+board = [' ' for x in range(10)] #поле
+gameon = False #запущена ли игра
+games = 0 #количество сыгранных игр
+s = '3'#размер поля
+nu = 2 #номер удаляемого сообщения, используется в playermove и player_move
+run = True #прерывает цикл в playermove и player_move
 
 
 @bot.message_handler(commands=['start'])
-def start(message):
+def start(message): #краткое описание бота
     markup = types.ReplyKeyboardMarkup(one_time_keyboard=True)
     a = types.KeyboardButton('/play')
     b = types.KeyboardButton('/size 3')
@@ -20,20 +22,20 @@ def start(message):
     bot.send_message(message.chat.id, f'Привет, {message.from_user.first_name}! Этот бот сыграет с вами '
                                       f'в Крестики Нолики. Вы можете выбрать размер поля с помощью /size'
                                       f' (/size 3 или /size 4).  '
-                                      f'Введите /play чтобы начать игру, /help чтобы посмотреть правила. '
-                                      f'Пожалуйста, после каждой игры очищайте историю чата, иначе он может тормозить.',
+                                      f'Введите /play чтобы начать игру, /help чтобы посмотреть правила. ',
                                         reply_markup=markup)
 
 
 @bot.message_handler(commands=['stop'])
-def stop(message):
+def stop(message):#прерывание игры игроком
     global gameon
     gameon = False
+    delete(message, 2)
     bot.send_message(message.chat.id, "Игра завершена")
 
 
 @bot.message_handler(commands=['help'])
-def help(message):
+def help(message):#полное описание бота
     bot.send_message(message.chat.id, 'Этот бот умеет играть в Крестики Нолики. '
                                       'Правила: '
                                       'Игрок и компьютер по очереди ставят свои фишки на поле 3х3. '
@@ -50,7 +52,7 @@ def change_size(n):
 
 
 @bot.message_handler(commands=['size'])
-def size(message):
+def size(message):#установка размера поля
     markup = types.ReplyKeyboardMarkup(one_time_keyboard=True)
     a = types.KeyboardButton('/play')
     b = types.KeyboardButton('/size 3')
@@ -70,11 +72,8 @@ def size(message):
         bot.send_message(message.chat.id, 'Размер поля изменить нельзя. Сначала закончите игру')
 
 
-run = True
-
-
 @bot.message_handler(commands=['play'])
-def play(message):
+def play(message):#
     global s
     global games
     global gameon
@@ -85,7 +84,7 @@ def play(message):
     else:
         board = [' ' for x in range(10)]
     bot.send_photo(message.chat.id, draw_board(board, s))
-    if games % 2 == 0:
+    if games % 2 == 0:#если первым ходит игрок
         while not (isboardfull(board)):
             if not (iswinner(board, 'O')):
                 if s == '3':
@@ -109,7 +108,6 @@ def play(message):
                 else:
                     insertletter('O', move)
                     bot.send_message(message.chat.id, f"Бот поставил 'O' в ячейку {move} :")
-                    #bot.send_photo(message.chat.id, draw_board(board, s))
             else:
                 bot.send_message(message.chat.id, f"{message.from_user.first_name}, вы выиграли!")
                 end_game(message)
@@ -119,7 +117,7 @@ def play(message):
                 end_game(message)
                 break
             bot.send_photo(message.chat.id, draw_board(board, s))
-    else:
+    else:#если первым ходит бот
         while not (isboardfull(board)):
             if not (iswinner(board, 'O')):
                 if size == '3':
@@ -133,7 +131,6 @@ def play(message):
                 else:
                     insertletter('X', move)
                     bot.send_message(message.chat.id, f"Бот поставил 'X' в ячейку {move} :")
-                    #bot.send_photo(message.chat.id, draw_board(board, s))
             else:
                 bot.send_message(message.chat.id, f"{message.from_user.first_name}, вы выиграли!"
                                                   f" Чтобы сыграть ещё раз введите /play")
@@ -151,7 +148,6 @@ def play(message):
                     playermove(message)
                 else:
                     player_move(message)
-                #bot.send_photo(message.chat.id, draw_board(board, s))
             else:
                 bot.send_message(message.chat.id, "Простите, бот выиграл этот раунд!")
                 end_game(message)
@@ -160,7 +156,7 @@ def play(message):
     games += 1
 
 
-def iswinner(bo, le):
+def iswinner(bo, le):#проверка на победителя
     global s
     if s == '3':
         return ((bo[7] == le and bo[8] == le and bo[9] == le) or
@@ -198,7 +194,7 @@ def selectrandom(li):
     return li[r]
 
 
-def draw_board(board, s):
+def draw_board(board, s):#рисование поля
     s = int(s)
     im = Image.new("RGB", (s * 100, s * 100), (255, 255, 255))
     drawer = ImageDraw.Draw(im)
@@ -228,9 +224,15 @@ def spaceisfree(pos):
     return board[pos] == ' '
 
 
-def playermove(message):
+def delete(message, n):#удаление лишних картинок
     global games
-    global run
+    if games % 2 == 1 and board.count('O') == 1:
+        bot.delete_message(message.chat.id, message.message_id - n - 2)
+    bot.delete_message(message.chat.id, message.message_id - n)
+
+
+def playermove(message):#ход игрока для поля 3 на 3
+    global games, run, nu
     run = True
     markup = types.ReplyKeyboardMarkup(one_time_keyboard=True)
     first, second, fird = types.KeyboardButton('1'), types.KeyboardButton('2'), types.KeyboardButton('3')
@@ -252,41 +254,37 @@ def playermove(message):
 
     bot.send_message(message.chat.id, f"Пожалуйста, выберите ячейку чтобы поставить {get_letter()} (1-9): ",
                      reply_markup=markup)
+    nu = 2
 
     while run:
         @bot.message_handler()
         def message_input_step(message):
+            global nu
             if gameon and s == '3':
                 try:
                     move = int(message.text)
                     if 10 > move > 0:
                         if spaceisfree(move):
                             insertletter(get_letter(), move)
+                            delete(message, nu)
                             change()
                         else:
+                            nu += 2
                             bot.send_message(message.chat.id, "Простите, это место занято!", reply_markup=markup)
                     else:
+                        nu += 2
                         bot.send_message(message.chat.id, f"Пожалуйста, введите число от 1 до 9!", reply_markup=markup)
                 except ValueError:
+                    nu += 2
                     bot.send_message(message.chat.id, "Пожалуйста, введите число", reply_markup=markup)
-            else:
-                try:
-                    move = int(message.text)
-                    if 17 > move > 0:
-                        if spaceisfree(move):
-                            insertletter(get_letter(), move)
-                            change()
-                        else:
-                            bot.send_message(message.chat.id, "Простите, это место занято!")
-                    else:
-                        bot.send_message(message.chat.id, f"Пожалуйста, введите число от 1 до 16!")
-                except ValueError:
-                    bot.send_message(message.chat.id, "Пожалуйста, введите число")
+            elif not gameon:
+                bot.send_message(message.chat.id, "Игра не запущена", reply_markup=markup)
 
 
-def player_move(message):
-    global run
+def player_move(message):#ход игрока для поля 4 на 4
+    global run, gameon, nu
     run = True
+    nu = 2
     markup = types.ReplyKeyboardMarkup(one_time_keyboard=True)
     first, second, fird, fourth = types.KeyboardButton('1'), types.KeyboardButton('2'), types.KeyboardButton('3'),\
                                   types.KeyboardButton('4')
@@ -317,21 +315,26 @@ def player_move(message):
     while run:
         @bot.message_handler()
         def message_input_step(message):
+            global nu
             try:
                 move = int(message.text)
                 if 17 > move > 0:
                     if spaceisfree(move):
                         insertletter(get_letter(), move)
+                        delete(message, nu)
                         change()
                     else:
+                        nu += 2
                         bot.send_message(message.chat.id, "Простите, это место занято!")
                 else:
+                    nu += 2
                     bot.send_message(message.chat.id, f"Пожалуйста, введите число от 1 до 16!")
             except ValueError:
+                nu += 2
                 bot.send_message(message.chat.id, "Пожалуйста, введите число")
 
 
-def computermove():
+def computermove():#ход бота для поля 3 на 3
     possiblemoves = [x for x, letter in enumerate(board) if letter == ' ' and x != 0]
     move = 0
 
@@ -367,7 +370,7 @@ def computermove():
     return move
 
 
-def computer_move():
+def computer_move():#ход бота для поля 4 на 4
     possiblemoves = [x for x, letter in enumerate(board) if letter == ' ' and x != 0]
     move = 0
 
@@ -403,11 +406,11 @@ def computer_move():
     return move
 
 
-def end_game(message):
+def end_game(message):#конец игры в общем случае
     global gameon
     bot.send_photo(message.chat.id, draw_board(board, s))
     gameon = False
-    bot.send_message(message.chat.id, 'Пожалуйста, очистите истроию чата во избежание торможения бота')
+    bot.delete_message(message.chat.id, message.message_id - 3)
 
 
 bot.polling(none_stop=True)
